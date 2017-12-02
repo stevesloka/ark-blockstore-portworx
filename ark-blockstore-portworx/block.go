@@ -22,6 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	portworxAPI = "http://portworx-service.kube-system:9001"
+)
+
 type BlockStore struct {
 	log logrus.FieldLogger
 }

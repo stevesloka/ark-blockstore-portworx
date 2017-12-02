@@ -88,3 +88,11 @@ In the future, we do hope to make it easier to register a multi-plugin binary wi
 [1]: https://travis-ci.org/heptio/ark-plugin-example.svg?branch=master
 [2]: https://travis-ci.org/heptio/ark-plugin-example
 [3]: https://github.com/heptio/ark/blob/master/docs/plugins.md#plugin-naming
+
+# Porworx Notes
+
+## Create Snapshot
+
+```
+$ curl -XPOST -H "Content-Type: application/json" http://localhost:9001/v1/osd-snapshot -d '{"id": "527704606069981121", "locator": { "name": "pvc-023a66df-d709-11e7-b0a8-068fa0695b76-snap"}}'
+```
