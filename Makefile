@@ -48,6 +48,9 @@ container: all
 	cp Dockerfile _output/Dockerfile
 	docker build -t $(IMAGE) -f _output/Dockerfile _output
 
+push:
+	docker push $(IMAGE)
+	
 all-ci: $(addprefix ci-, $(BINS))
 
 ci-%:
