@@ -91,6 +91,8 @@ In the future, we do hope to make it easier to register a multi-plugin binary wi
 
 # Porworx Notes
 
+API Spec: http://api.openstorage.org/openstorage/index.html
+
 ## Create Snapshot
 
 ```

@@ -17,13 +17,21 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+
 	"github.com/heptio/ark/pkg/cloudprovider"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
-	portworxAPI = "http://portworx-service.kube-system:9001"
+	apiURL = "http://portworx-service.kube-system:9001"
 )
 
 type BlockStore struct {
@@ -72,7 +80,24 @@ func (f *BlockStore) IsVolumeReady(volumeID, volumeAZ string) (ready bool, err e
 // CreateSnapshot creates a snapshot of the specified block volume, and applies the provided
 // set of tags to the snapshot.
 func (f *BlockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (snapshotID string, err error) {
-	return "", nil
+
+	snapshotID = uuid.NewV4().String()
+	body := createSnap{
+		id: volumeID,
+		locator: locator{
+			name: snapshotID,
+		},
+	}
+
+	httpURL := fmt.Sprintf("%s/v1/osd_snapshot", apiURL)
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(body)
+
+	res, _ := http.Post(httpURL, "application/json", b)
+
+	io.Copy(os.Stdout, res.Body)
+
+	return snapshotID, nil
 }
 
 // DeleteSnapshot deletes the specified volume snapshot.
