@@ -101,11 +101,13 @@ func (f *BlockStore) GetVolumeID(pv runtime.Unstructured) (string, error) {
 	f.log.Info("GetVolumeID")
 
 	if !collections.Exists(pv.UnstructuredContent(), volumeIDPath) {
+		f.log.Error("Could not find px data in UnstructuredContent")
 		return "", nil
 	}
 
 	volumeID, err := collections.GetString(pv.UnstructuredContent(), volumeIDPath)
 	if err != nil {
+		f.log.Error("Could not get px data in UnstructuredContent")
 		return "", err
 	}
 
@@ -119,6 +121,7 @@ func (f *BlockStore) SetVolumeID(pv runtime.Unstructured, volumeID string) (runt
 
 	px, err := collections.GetMap(pv.UnstructuredContent(), volumeIDPath)
 	if err != nil {
+		f.log.Error("Could not find px data in UnstructuredContent")
 		return nil, err
 	}
 
