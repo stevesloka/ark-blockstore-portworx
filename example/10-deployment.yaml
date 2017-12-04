@@ -41,7 +41,7 @@ spec:
       containers:
         - name: ark
           image: gcr.io/heptio-images/ark:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command:
             - /ark
           args:

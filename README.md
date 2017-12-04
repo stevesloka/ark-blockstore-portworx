@@ -98,3 +98,9 @@ API Spec: http://api.openstorage.org/openstorage/index.html
 ```
 $ curl -XPOST -H "Content-Type: application/json" http://localhost:9001/v1/osd-snapshot -d '{"id": "527704606069981121", "locator": { "name": "pvc-023a66df-d709-11e7-b0a8-068fa0695b76-snap"}}'
 ```
+
+## Restore Snapshot
+
+```
+$ curl -XPOST -H "Content-Type: application/json" http://localhost:9001/v1/osd-volumes -d '{ "locator": { "name": "37049577-a135-423e-82d0-6dc754e4bb45" }, "spec": { "ephemeral": false, "size": 2147483648,          "format": 2, "block_size": 32768, "ha_level": 1, "cos": 1, "io_priority": "medium", "dedupe": false, "snapshot_interval": 0, "shared": false } }'
+```

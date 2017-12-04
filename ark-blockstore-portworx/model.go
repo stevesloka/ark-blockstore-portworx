@@ -17,21 +17,28 @@ limitations under the License.
 package main
 
 type createSnap struct {
-	id string
-	locator
+	Id      string `json:"id"`
+	Locator `json:"locator"`
 }
 
 type createVolume struct {
-	locator
-	spec
+	Locator `json:"locator"`
+	Spec    `json:"spec"`
 }
 
-type spec struct {
-	ephemeral bool
-	size      int
-	format    int
+type Spec struct {
+	Ephemeral        bool   `json:"ephemeral"`
+	Size             int    `json:"size"`
+	Format           int    `json:"format"`
+	Blocksize        int    `json:"block_size"`
+	HaLevel          int    `json:"ha_level"`
+	Cos              int    `json:"cos"`
+	IOPriority       string `json:"io_priority`
+	Dedupe           bool   `json:"dedupe"`
+	SnapshotInterval int    `json:"snapshot_interval"`
+	Shared           bool   `json:"shared"`
 }
 
-type locator struct {
-	name string
+type Locator struct {
+	Name string `json:"name"`
 }

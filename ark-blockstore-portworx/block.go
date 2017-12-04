@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/heptio/ark/pkg/cloudprovider"
@@ -45,20 +46,59 @@ func NewBlockStore(log logrus.FieldLogger) cloudprovider.BlockStore {
 }
 
 func (f *BlockStore) Init(config map[string]string) error {
-	f.log.Infof("BlockStore.Init called")
+	f.log.Info("BlockStore.Init called")
 	return nil
 }
 
 // CreateVolumeFromSnapshot creates a new block volume in the specified
 // availability zone, initialized from the provided snapshot,
 // and with the specified type and IOPS (if using provisioned IOPS).
-func (f *BlockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (volumeID string, err error) {
+func (f *BlockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (string, error) {
 
-	return snapshotID, nil
+	f.log.Info("CreateVolumeFromSnapshot: snapshotID: ", snapshotID)
+
+	body := createVolume{
+		Locator: Locator{
+			Name: snapshotID,
+		},
+		Spec: Spec{
+			Ephemeral: false,
+			Format:    2,
+			Size:      2147483648,
+		},
+	}
+
+	httpURL := fmt.Sprintf("%s/v1/osd-volumes", apiURL)
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(body)
+
+	res, err := http.Post(httpURL, "application/json", b)
+
+	if err != nil {
+		f.log.Error("Error creating volume from snapshot! ", err)
+		return "", err
+	}
+
+	f.log.Info("response: ", res.StatusCode)
+
+	var data map[string]interface{}
+	bodyResponse, _ := ioutil.ReadAll(res.Body)
+	err = json.Unmarshal(bodyResponse, &data)
+
+	if err != nil {
+		f.log.Error("Error unmarshaling json ", err)
+		return "", err
+	}
+
+	volID := data["id"].(string)
+
+	return volID, nil
 }
 
 // GetVolumeID returns the cloud provider specific identifier for the PersistentVolume.
 func (f *BlockStore) GetVolumeID(pv runtime.Unstructured) (string, error) {
+
+	f.log.Info("GetVolumeID")
 
 	if !collections.Exists(pv.UnstructuredContent(), volumeIDPath) {
 		return "", nil
@@ -68,6 +108,8 @@ func (f *BlockStore) GetVolumeID(pv runtime.Unstructured) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	f.log.Info("GetVolumeID:", volumeID)
 
 	return volumeID, nil
 }
@@ -111,11 +153,13 @@ func (f *BlockStore) IsVolumeReady(volumeID, volumeAZ string) (bool, error) {
 // set of tags to the snapshot.
 func (f *BlockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
 
+	f.log.Info("CreateSnapshot")
+
 	snapshotID := uuid.NewV4().String()
 	body := createSnap{
-		id: volumeID,
-		locator: locator{
-			name: snapshotID,
+		Id: volumeID,
+		Locator: Locator{
+			Name: snapshotID,
 		},
 	}
 
@@ -126,8 +170,11 @@ func (f *BlockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]s
 	_, err := http.Post(httpURL, "application/json", b)
 
 	if err != nil {
+		f.log.Error("Error creating snapshot: ", err)
 		return "", err
 	}
+
+	f.log.Info("snapshotID: ", snapshotID)
 
 	return snapshotID, nil
 }
