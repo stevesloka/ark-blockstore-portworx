@@ -16,22 +16,29 @@ limitations under the License.
 
 package main
 
-type createSnap struct {
-	id string
-	locator
-}
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
 
-type createVolume struct {
-	locator
-	spec
-}
+func (f *BlockStore) getVolumeInfo(volumeID string) (map[string]interface{}, error) {
+	httpURL := fmt.Sprintf("%s/v1/osd-volumes/%s", apiURL, volumeID)
 
-type spec struct {
-	ephemeral bool
-	size      int
-	format    int
-}
+	res, err := http.Get(httpURL)
 
-type locator struct {
-	name string
+	if err != nil {
+		return nil, err
+	}
+
+	var data map[string]interface{}
+	body, _ := ioutil.ReadAll(res.Body)
+	err = json.Unmarshal(body, &data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }

@@ -20,18 +20,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 
 	"github.com/heptio/ark/pkg/cloudprovider"
+	"github.com/heptio/ark/pkg/util/collections"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
-	apiURL = "http://portworx-service.kube-system:9001"
+	apiURL       = "http://portworx-service.kube-system:9001"
+	volumeIDPath = "spec.portworxVolume.volumeID"
 )
 
 type BlockStore struct {
@@ -53,35 +53,65 @@ func (f *BlockStore) Init(config map[string]string) error {
 // availability zone, initialized from the provided snapshot,
 // and with the specified type and IOPS (if using provisioned IOPS).
 func (f *BlockStore) CreateVolumeFromSnapshot(snapshotID, volumeType, volumeAZ string, iops *int64) (volumeID string, err error) {
-	return "", nil
+
+	return snapshotID, nil
 }
 
 // GetVolumeID returns the cloud provider specific identifier for the PersistentVolume.
 func (f *BlockStore) GetVolumeID(pv runtime.Unstructured) (string, error) {
-	return "", nil
+
+	if !collections.Exists(pv.UnstructuredContent(), volumeIDPath) {
+		return "", nil
+	}
+
+	volumeID, err := collections.GetString(pv.UnstructuredContent(), volumeIDPath)
+	if err != nil {
+		return "", err
+	}
+
+	return volumeID, nil
 }
 
 // SetVolumeID sets the cloud provider specific identifier for the PersistentVolume.
 func (f *BlockStore) SetVolumeID(pv runtime.Unstructured, volumeID string) (runtime.Unstructured, error) {
+
+	px, err := collections.GetMap(pv.UnstructuredContent(), volumeIDPath)
+	if err != nil {
+		return nil, err
+	}
+
+	px["volumeID"] = volumeID
+
 	return pv, nil
 }
 
 // GetVolumeInfo returns the type and IOPS (if using provisioned IOPS) for
 // the specified block volume in the given availability zone.
 func (f *BlockStore) GetVolumeInfo(volumeID, volumeAZ string) (string, *int64, error) {
-	return "", nil, nil
+	return "portworx", nil, nil
 }
 
 // IsVolumeReady returns whether the specified volume is ready to be used.
-func (f *BlockStore) IsVolumeReady(volumeID, volumeAZ string) (ready bool, err error) {
+func (f *BlockStore) IsVolumeReady(volumeID, volumeAZ string) (bool, error) {
+
+	data, err := f.getVolumeInfo(volumeID)
+
+	if err != nil {
+		return false, err
+	}
+
+	if data["status"] != "up" {
+		return false, nil
+	}
+
 	return true, nil
 }
 
 // CreateSnapshot creates a snapshot of the specified block volume, and applies the provided
 // set of tags to the snapshot.
-func (f *BlockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (snapshotID string, err error) {
+func (f *BlockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]string) (string, error) {
 
-	snapshotID = uuid.NewV4().String()
+	snapshotID := uuid.NewV4().String()
 	body := createSnap{
 		id: volumeID,
 		locator: locator{
@@ -89,18 +119,34 @@ func (f *BlockStore) CreateSnapshot(volumeID, volumeAZ string, tags map[string]s
 		},
 	}
 
-	httpURL := fmt.Sprintf("%s/v1/osd_snapshot", apiURL)
+	httpURL := fmt.Sprintf("%s/v1/osd-snapshot", apiURL)
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(body)
 
-	res, _ := http.Post(httpURL, "application/json", b)
+	_, err := http.Post(httpURL, "application/json", b)
 
-	io.Copy(os.Stdout, res.Body)
+	if err != nil {
+		return "", err
+	}
 
 	return snapshotID, nil
 }
 
 // DeleteSnapshot deletes the specified volume snapshot.
 func (f *BlockStore) DeleteSnapshot(snapshotID string) error {
+
+	httpURL := fmt.Sprintf("%s/v1/osd-volumes/%s", apiURL, snapshotID)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("DELETE", httpURL, nil)
+	resp, err := client.Do(req)
+
+	// Process response
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
 	return nil
 }
